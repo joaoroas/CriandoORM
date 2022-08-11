@@ -2,7 +2,7 @@
 
 namespace CriandoORM
 {
-    public class Service 
+    public sealed class Service 
     {
         private string connectionString;
         private IType iType;
@@ -13,17 +13,17 @@ namespace CriandoORM
             this.connectionString = this.iType.ConnectionString;
         }
 
-        public virtual void Save()
+        public void Save()
         {
             throw new NotImplementedException();
         }
 
-        public virtual void Destroy()
+        public void Destroy()
         {
             throw new NotImplementedException();
         }
 
-        public virtual void Get()
+        public void Get()
         {
             throw new NotImplementedException();
         }
