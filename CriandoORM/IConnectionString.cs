@@ -4,8 +4,8 @@ using System.Text;
 
 namespace CriandoORM
 {
-    public class IConnectionString
+    public interface IConnectionString
     {
-       public string ConnectionString;
+       public string ConnectionString { get; }
     }
 }

@@ -10,5 +10,6 @@ namespace CriandoORM
         public string PrimaryKey { get; set; }
         public string Collection { get; set; }
         public string ForeignKey { get; set; }
+        public bool IsNotOnDatabase { get; set; }
     }
 }

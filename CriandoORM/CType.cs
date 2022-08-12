@@ -4,8 +4,13 @@ using System.Text;
 
 namespace CriandoORM
 {
-   public abstract class CType : IType
+   public abstract class CType : IType, IConnectionString
     {
+        [Table(PrimaryKey ="id")]
+        public virtual int Id { get; set;}
+
+        [Table(IsNotOnDatabase = true)]
+        public abstract string ConnectionString { get; }
 
         public virtual void Save()
         {
