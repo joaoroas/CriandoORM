@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
-
+using System.Reflection;
 namespace CriandoORM
 {
     public sealed class Service
@@ -23,6 +23,8 @@ namespace CriandoORM
 
                 foreach (var p in this.cType.GetType().GetProperties())
                 {
+                    if (p.GetValue(this.cType) == null) continue;
+
                     TableAttribute[] propertiesAttributes = (TableAttribute[])p.GetCustomAttributes(typeof(TableAttribute), false);
                     if (propertiesAttributes != null && propertiesAttributes.Length > 0)
                     {
@@ -40,17 +42,11 @@ namespace CriandoORM
                     }
                 }
 
-                string table = $"{this.cType.GetType().Name.ToLower()}s";
-
-                TableAttribute[] tableAttributes = (TableAttribute[])this.cType.GetType().GetCustomAttributes(typeof(TableAttribute), false);
-                if (tableAttributes != null && tableAttributes.Length > 0)
-                {
-                    table = tableAttributes[0].Name;
-                }
+                string table = this.GetTableName();
 
 
                 string sql = string.Empty;
-                if(this.cType.Id == 0)
+                if (this.cType.Id == 0)
                 {
                     sql = $"insert into {table} (";
                     sql += string.Join(',', cols);
@@ -64,13 +60,12 @@ namespace CriandoORM
 
                     var colsUpdate = new List<string>();
 
-                    foreach(var col in cols)
+                    foreach (var col in cols)
                     {
-                        colsUpdate.Add($"{col} = @{col}");
+                        colsUpdate.Add($"{col} = @${col}");
                     }
                     sql += string.Join(",", colsUpdate);
-                    string pkName = this.cType.Id.GetType().GetCustomAttributes<TableAttribute>().P
-                    sql += "where"
+                    sql += $"where {this.GetPkName()} = {this.cType.Id}";
 
                 }
 
@@ -85,96 +80,10 @@ namespace CriandoORM
                     var value = values[i];
                     var col = cols[i];
 
-                    if (value.GetType() == typeof(int))
-                    {
-                        cmd.Parameters.Add($"@{col}", SqlDbType.Int);
+                    cmd.Parameters.Add($"@{col}", GetDbType(value));
 
-                    }
-                    else if (value.GetType() == typeof(string))
-                    {
-                        cmd.Parameters.Add($"@{col}", SqlDbType.VarChar);
-
-                    }
-                    else if (value.GetType() == typeof(double))
-                    {
-                        cmd.Parameters.Add($"@{col}", SqlDbType.Money);
-
-                    }
-                    else if (value.GetType() == typeof(DateTime))
-                    {
-                        cmd.Parameters.Add($"@{col}", SqlDbType.DateTime);
-
-                    }
-
-                    cmd.Parameters[$"@{col}"].Value = values[i];
+                    cmd.Parameters[$"@{col}"].Value = value;
                 }
-
-                private  SqlDbType GetDbType(object value)
-                {
-                    var result = SqlDbType.VarChar;
-                    try
-                    {
-                        Type type = value.GetType();
-
-                        switch (Type.GetTypeCode(type))
-                        {
-                            case TypeCode.Object:
-                                result = SqlDbType.Variant;
-                                break;
-                            case TypeCode.Boolean:
-                                result = SqlDbType.Bit;
-                                break;
-                            case TypeCode.Char:
-                                result = SqlDbType.NChar;
-                                break;
-                            case TypeCode.SByte:
-                                result = SqlDbType.SmallInt;
-                                break;
-                            case TypeCode.Byte:
-                                result = SqlDbType.TinyInt;
-                                break;
-                            case TypeCode.Int16:
-                                result = SqlDbType.SmallInt;
-                                break;
-                            case TypeCode.UInt16:
-                                result = SqlDbType.Int;
-                                break;
-                            case TypeCode.Int32:
-                                result = SqlDbType.Int;
-                                break;
-                            case TypeCode.UInt32:
-                                result = SqlDbType.BigInt;
-                                break;
-                            case TypeCode.Int64:
-                                result = SqlDbType.BigInt;
-                                break;
-                            case TypeCode.UInt64:
-                                result = SqlDbType.Decimal;
-                                break;
-                            case TypeCode.Single:
-                                result = SqlDbType.Real;
-                                break;
-                            case TypeCode.Double:
-                                result = SqlDbType.Float;
-                                break;
-                            case TypeCode.Decimal:
-                                result = SqlDbType.Money;
-                                break;
-                            case TypeCode.DateTime:
-                                result = SqlDbType.DateTime;
-                                break;
-                            case TypeCode.String:
-                                result = SqlDbType.VarChar;
-                                break;
-                        }
-                    }
-                    catch (Exception)
-                    {
-
-                        throw;
-                    }
-                }
-
 
 
                 try
@@ -191,16 +100,175 @@ namespace CriandoORM
 
         }
 
+        private string GetTableName()
+        {
+            var table = $"{this.cType.GetType().Name.ToLower()}s";
+
+            TableAttribute[] tableAtributes = (TableAttribute[])this.cType.GetType().GetCustomAttributes(typeof(TableAttribute), false);
+            if (tableAtributes != null && tableAtributes.Length > 0)
+            {
+                table = tableAtributes[0].Name;
+            }
+            return table;
+        }
+
+        private SqlDbType GetDbType(object value)
+        {
+            var result = SqlDbType.VarChar;
+            try
+            {
+                Type type = value.GetType();
+
+                switch (Type.GetTypeCode(type))
+                {
+                    case TypeCode.Object:
+                        result = SqlDbType.Variant;
+                        break;
+                    case TypeCode.Boolean:
+                        result = SqlDbType.Bit;
+                        break;
+                    case TypeCode.Char:
+                        result = SqlDbType.NChar;
+                        break;
+                    case TypeCode.SByte:
+                        result = SqlDbType.SmallInt;
+                        break;
+                    case TypeCode.Byte:
+                        result = SqlDbType.TinyInt;
+                        break;
+                    case TypeCode.Int16:
+                        result = SqlDbType.SmallInt;
+                        break;
+                    case TypeCode.UInt16:
+                        result = SqlDbType.Int;
+                        break;
+                    case TypeCode.Int32:
+                        result = SqlDbType.Int;
+                        break;
+                    case TypeCode.UInt32:
+                        result = SqlDbType.BigInt;
+                        break;
+                    case TypeCode.Int64:
+                        result = SqlDbType.BigInt;
+                        break;
+                    case TypeCode.UInt64:
+                        result = SqlDbType.Decimal;
+                        break;
+                    case TypeCode.Single:
+                        result = SqlDbType.Real;
+                        break;
+                    case TypeCode.Double:
+                        result = SqlDbType.Float;
+                        break;
+                    case TypeCode.Decimal:
+                        result = SqlDbType.Money;
+                        break;
+                    case TypeCode.DateTime:
+                        result = SqlDbType.DateTime;
+                        break;
+                    case TypeCode.String:
+                        result = SqlDbType.VarChar;
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+
+                throw ex;
+            }
+
+            return result;
+        }
+
+
 
 
         public void Destroy()
         {
-            throw new NotImplementedException();
+            using (SqlConnection conn = new SqlConnection(this.cType.ConnectionString))
+            {
+                string sql = $"delete * from {this.GetTableName()} where {this.GetPkName()} = {this.cType.Id}";
+
+                SqlCommand cmd = new SqlCommand(sql, conn);
+                try
+                {
+                    conn.Open();
+                    cmd.ExecuteNonQuery();
+
+                }
+                catch (Exception ex)
+                {
+
+                    Console.WriteLine(ex.Message);
+                }
+
+
+            }
         }
 
         public void Get()
         {
-            throw new NotImplementedException();
+            using (SqlConnection conn = new SqlConnection(this.cType.ConnectionString))
+            {
+                string sql = $"select * from {this.GetTableName()} where {this.GetPkName()} = {this.cType.Id}";
+
+                SqlCommand cmd = new SqlCommand(sql, conn);
+                try
+                {
+                    conn.Open();
+                    using (SqlDataReader dr = cmd.ExecuteReader())
+                    {
+                        while (dr.Read())
+                        {
+
+
+                            this.cType.Id = Convert.ToInt32(dr[this.GetPkName()]);
+                            foreach (var p in this.cType.GetType().GetProperties())
+                            {
+                                TableAttribute[] propertiesAttributes = (TableAttribute[])p.GetCustomAttributes(typeof(TableAttribute), false);
+                                if (propertiesAttributes != null && propertiesAttributes.Length > 0)
+                                {
+                                    if (!propertiesAttributes[0].IsNotOnDatabase && string.IsNullOrEmpty(propertiesAttributes[0].PrimaryKey))
+                                    {
+                                        p.SetValue(this.cType, dr[p.Name]);
+                                    }
+
+                                }
+                                else
+                                {
+                                    p.SetValue(this.cType, dr[p.Name]);
+
+                                }
+                            }
+                        }
+                    }
+
+                }
+                catch (Exception ex)
+                {
+
+                    Console.WriteLine(ex.Message);
+                }
+
+
+            }
+        }
+
+        private object GetPkName()
+        {
+          /*  TableAttribute[] propertiesAttributes = (TableAttribute[])this.cType.GetType().GetProperty("Id").GetCustomAttributes(typeof(TableAttribute), false);
+            if (propertiesAttributes != null && propertiesAttributes.Length > 0 && !string.IsNullOrEmpty(propertiesAttributes[0].PrimaryKey)) ;
+            {
+                return propertiesAttributes[0].PrimaryKey;
+                //return this.cType.Id.GetType().GetCustomAttribute<TableAttribute>().PrimaryKey;
+            }
+            else
+            {
+                return "id";
+            }*/
+
+            return this.cType.GetType().GetProperty("Id").GetCustomAttribute<TableAttribute>().PrimaryKey;
+
         }
 
         public static T All<T>()
