@@ -187,7 +187,7 @@ namespace CriandoORM
         {
             using (SqlConnection conn = new SqlConnection(this.cType.ConnectionString))
             {
-                string sql = $"delete * from {this.GetTableName()} where {this.GetPkName()} = {this.cType.Id}";
+                string sql = $"delete  from {this.GetTableName()} where {this.GetPkName()} = {this.cType.Id}";
 
                 SqlCommand cmd = new SqlCommand(sql, conn);
                 try
@@ -221,25 +221,8 @@ namespace CriandoORM
                         while (dr.Read())
                         {
 
+                            this.fill(this.cType, dr);
 
-                            this.cType.Id = Convert.ToInt32(dr[this.GetPkName()]);
-                            foreach (var p in this.cType.GetType().GetProperties())
-                            {
-                                TableAttribute[] propertiesAttributes = (TableAttribute[])p.GetCustomAttributes(typeof(TableAttribute), false);
-                                if (propertiesAttributes != null && propertiesAttributes.Length > 0)
-                                {
-                                    if (!propertiesAttributes[0].IsNotOnDatabase && string.IsNullOrEmpty(propertiesAttributes[0].PrimaryKey))
-                                    {
-                                        p.SetValue(this.cType, dr[p.Name]);
-                                    }
-
-                                }
-                                else
-                                {
-                                    p.SetValue(this.cType, dr[p.Name]);
-
-                                }
-                            }
                         }
                     }
 
@@ -254,26 +237,81 @@ namespace CriandoORM
             }
         }
 
-        private object GetPkName()
+        private void fill(CType obj, SqlDataReader dr)
         {
-          /*  TableAttribute[] propertiesAttributes = (TableAttribute[])this.cType.GetType().GetProperty("Id").GetCustomAttributes(typeof(TableAttribute), false);
-            if (propertiesAttributes != null && propertiesAttributes.Length > 0 && !string.IsNullOrEmpty(propertiesAttributes[0].PrimaryKey)) ;
+            obj.Id = Convert.ToInt32(dr[this.GetPkName()]);
+
+            foreach (var p in obj.GetType().GetProperties())
             {
-                return propertiesAttributes[0].PrimaryKey;
-                //return this.cType.Id.GetType().GetCustomAttribute<TableAttribute>().PrimaryKey;
+                TableAttribute[] propertiesAttributes = (TableAttribute[])p.GetCustomAttributes(typeof(TableAttribute), false);
+                if (propertiesAttributes != null && propertiesAttributes.Length > 0)
+                {
+                    if (!propertiesAttributes[0].IsNotOnDatabase && string.IsNullOrEmpty(propertiesAttributes[0].PrimaryKey))
+                    {
+                        p.SetValue(obj, dr[p.Name]);
+                    }
+
+                }
+                else
+                {
+                    p.SetValue(obj, dr[p.Name]);
+
+                }
             }
-            else
-            {
-                return "id";
-            }*/
+        }
+
+        private string GetPkName()
+        {
+            /*  TableAttribute[] propertiesAttributes = (TableAttribute[])this.cType.GetType().GetProperty("Id").GetCustomAttributes(typeof(TableAttribute), false);
+              if (propertiesAttributes != null && propertiesAttributes.Length > 0 && !string.IsNullOrEmpty(propertiesAttributes[0].PrimaryKey)) ;
+              {
+                  return propertiesAttributes[0].PrimaryKey;
+                  //return this.cType.Id.GetType().GetCustomAttribute<TableAttribute>().PrimaryKey;
+              }
+              else
+              {
+                  return "id";
+              }*/
 
             return this.cType.GetType().GetProperty("Id").GetCustomAttribute<TableAttribute>().PrimaryKey;
 
         }
 
-        public static T All<T>()
+        public List<CType> All()
         {
-            throw new NotImplementedException();
+            string sql;
+            var list = new List<CType>();
+
+            using (SqlConnection conn = new SqlConnection(this.cType.ConnectionString))
+            {
+                sql = $"select * from {this.GetTableName()}";
+
+                SqlCommand cmd = new SqlCommand(sql, conn);
+                try
+                {
+                    conn.Open();
+
+
+                    using (SqlDataReader dr = cmd.ExecuteReader())
+                    {
+                        while (dr.Read())
+                        {
+
+                            var instance = (CType)Activator.CreateInstance(this.cType.GetType());
+                            this.fill(instance, dr);
+                            list.Add(instance);
+
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+
+                    Console.WriteLine(ex.Message);
+                }
+                return list;
+
+            }
         }
     }
 }
